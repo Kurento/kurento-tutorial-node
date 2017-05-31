@@ -109,7 +109,7 @@ function CallMediaPipeline() {
     this.webRtcEndpoint = {};
 }
 
-CallMediaPipeline.prototype.createPipeline = function(callerId, calleeId, ws, callback) {
+CallMediaPipeline.prototype.createPipeline = function(callerId, calleeId, callback) {
     var self = this;
     getKurentoClient(function(error, kurentoClient) {
         if (error) {
@@ -343,7 +343,7 @@ function incomingCallResponse(calleeId, from, callResponse, calleeSdp, ws) {
         pipelines[caller.id] = pipeline;
         pipelines[callee.id] = pipeline;
 
-        pipeline.createPipeline(caller.id, callee.id, ws, function(error) {
+        pipeline.createPipeline(caller.id, callee.id, function(error) {
             if (error) {
                 return onError(error, error);
             }
