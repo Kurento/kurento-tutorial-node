@@ -29,7 +29,8 @@ var https = require('https');
 var argv = minimist(process.argv.slice(2), {
     default: {
         as_uri: 'https://localhost:8443/',
-        ws_uri: 'ws://localhost:8888/kurento'
+        ws_uri: 'ws://localhost:8888/kurento',
+        file_uri: 'file:///tmp/recorder_demo.webm', // file to be stored in media server
     }
 });
 
@@ -179,7 +180,13 @@ function start(sessionId, ws, sdpOffer, callback) {
                 return callback(error);
             }
 
-            createMediaElements(pipeline, ws, function(error, webRtcEndpoint) {
+            var elements =
+            [
+              {type: 'RecorderEndpoint', params: {uri : args.file_uri}},
+              {type: 'WebRtcEndpoint', params: {}}
+            ];
+
+            createMediaElements(elements, pipeline, ws, function(error, elements) {
                 if (error) {
                     pipeline.release();
                     return callback(error);
@@ -192,13 +199,16 @@ function start(sessionId, ws, sdpOffer, callback) {
                     }
                 }
 
-                connectMediaElements(webRtcEndpoint, function(error) {
+                var recorder = elements[0];
+                var webRtc   = elements[1];
+                
+                connectMediaElements(kurentoClient, webRtc, webRtc, recorder, function(error) {
                     if (error) {
                         pipeline.release();
                         return callback(error);
                     }
 
-                    webRtcEndpoint.on('OnIceCandidate', function(event) {
+                    webRtc.on('OnIceCandidate', function(event) {
                         var candidate = kurento.getComplexType('IceCandidate')(event.candidate);
                         ws.send(JSON.stringify({
                             id : 'iceCandidate',
@@ -206,7 +216,7 @@ function start(sessionId, ws, sdpOffer, callback) {
                         }));
                     });
 
-                    webRtcEndpoint.processOffer(sdpOffer, function(error, sdpAnswer) {
+                    webRtc.processOffer(sdpOffer, function(error, sdpAnswer) {
                         if (error) {
                             pipeline.release();
                             return callback(error);
@@ -214,34 +224,43 @@ function start(sessionId, ws, sdpOffer, callback) {
 
                         sessions[sessionId] = {
                             'pipeline' : pipeline,
-                            'webRtcEndpoint' : webRtcEndpoint
+                            'webRtcEndpoint' : webRtc,
+                            'recorder' : recorder
                         }
                         return callback(null, sdpAnswer);
                     });
 
-                    webRtcEndpoint.gatherCandidates(function(error) {
+                    webRtc.gatherCandidates(function(error) {
                         if (error) {
                             return callback(error);
                         }
                     });
+
+                    recorder.record(function(error) {
+                      if (error) return onError(error);
+
+                      console.log("record");
+
+                    });
+
                 });
             });
         });
     });
 }
 
-function createMediaElements(pipeline, ws, callback) {
-    pipeline.create('WebRtcEndpoint', function(error, webRtcEndpoint) {
+function createMediaElements(elements, pipeline, ws, callback) {
+    pipeline.create(elements, function(error, elements) {
         if (error) {
             return callback(error);
         }
 
-        return callback(null, webRtcEndpoint);
+        return callback(null, elements);
     });
 }
 
-function connectMediaElements(webRtcEndpoint, callback) {
-    webRtcEndpoint.connect(webRtcEndpoint, function(error) {
+function connectMediaElements(client, webRtc1, webRtc2, recorder, callback) {
+    client.connect(webRtc1, webRtc2, recorder, function(error) {
         if (error) {
             return callback(error);
         }
@@ -252,11 +271,29 @@ function connectMediaElements(webRtcEndpoint, callback) {
 function stop(sessionId) {
     if (sessions[sessionId]) {
         var pipeline = sessions[sessionId].pipeline;
+        var webRtcEndpoint = sessions[sessionId].webRtcEndpoint;
+        var recorder = sessions[sessionId].recorder;
+
         console.info('Releasing pipeline');
         pipeline.release();
 
         delete sessions[sessionId];
         delete candidatesQueue[sessionId];
+
+      // stopRecordButton.addEventListener("click", function(event){
+        recorder.stop();
+        pipeline.release();
+        // webRtcPeer.dispose();
+        // videoInput.src = "";
+        // videoOutput.src = "";
+
+        // hideSpinner(videoInput, videoOutput);
+
+        // var playButton = document.getElementById('play');
+        // playButton.addEventListener('click', startPlaying);
+      // })    
+
+          
     }
 }
 
@@ -278,3 +315,4 @@ function onIceCandidate(sessionId, _candidate) {
 }
 
 app.use(express.static(path.join(__dirname, 'static')));
+
