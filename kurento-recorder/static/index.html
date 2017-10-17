@@ -22,7 +22,7 @@
     <script src="bower_components/kurento-utils/js/kurento-utils.js"></script>
 
     <script src="js/index.js"></script>
-    <title>Kurento Tutorial 1: Hello World</title>
+    <title>Kurento Tutoria: Recorder</title>
   </head>
   <body>
 
@@ -47,19 +47,25 @@
 
     <div class="container">
       <div class="page-header">
-        <h1>Tutorial 1: Hello World (WebRTC in loopback)</h1>
+        <h1>Tutorial: Recorder</h1>
         <p>
           This application shows a <i>WebRtcEndpoint</i> connected to itself
           (loopback). Take a look to the <a href="img/pipeline.png"
-            data-toggle="lightbox" data-title="Hello World Media Pipeline"
-            data-footer="WebRtcEnpoint in loopback">Media Pipeline</a>. To run
+            data-toggle="lightbox" data-title="Recorder Pipeline"
+            data-footer="WebRtcEnpoint in loopback with RecorderEndpoint">Media Pipeline</a>. To run
           this demo follow these steps:
         </p>
         <ol>
-          <li>Open this page with a browser compliant with WebRTC (Chrome, Firefox).</li>
-          <li>Click on <i>Start</i> button.</li>
-          <li>Grant the access to the camera and microphone. After the SDP negotiation the loopback should start.</li>
-          <li>Click on <i>Stop</i> to finish the communication.</li>
+          <li>Open this page with a browser compliant with WebRTC
+            (Chrome, Firefox).</li>
+          <li>Click on <i>Start</i> button.
+          </li>
+          <li>Grant the access to the camera and microphone. After the
+            SDP negotiation the loopback should start.</li>
+          <li>Click on <i>Stop</i> to finish the communication.
+          </li>
+          <li>Click on <i>Play</i> to see the recording.
+          </li>
         </ol>
       </div>
       <div class="row">
@@ -74,6 +80,10 @@
             <br/>
             <a id="stop" href="#" class="btn btn-danger">
               <span class="glyphicon glyphicon-stop"></span> Stop</a>
+            <br/>
+            <br/>
+            <a id="play" href="#" class="btn btn-warning"> <span
+          class="glyphicon glyphicon-play"></span> Play </a>
         </div>
         <div class="col-md-5">
           <h3>Remote stream</h3>
