@@ -1,5 +1,5 @@
 {
-  "name": "kurento-hello-world",
+  "name": "kurento-recorder",
   "version": "6.6.1",
   "private": true,
   "scripts": {

@@ -120,6 +120,8 @@ function stop() {
 	if (webRtcPeer) {
 		webRtcPeer.dispose();
 		webRtcPeer = null;
+    videoInput.src = "";
+    videoOutput.src = "";
 
 		var message = {
 			id : 'stop'
@@ -127,8 +129,16 @@ function stop() {
 		sendMessage(message);
 	}
 	hideSpinner(videoInput, videoOutput);
+  var playButton = document.getElementById('play');
+  playButton.addEventListener('click', startPlaying);	
 }
 
+function startPlaying()
+{
+  console.log("Start playing");
+
+
+}
 function setState(nextState) {
 	switch (nextState) {
 	case I_CAN_START:

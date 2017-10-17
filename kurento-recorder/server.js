@@ -182,7 +182,7 @@ function start(sessionId, ws, sdpOffer, callback) {
 
             var elements =
             [
-              {type: 'RecorderEndpoint', params: {uri : args.file_uri}},
+              {type: 'RecorderEndpoint', params: {uri : argv.file_uri}},
               {type: 'WebRtcEndpoint', params: {}}
             ];
 

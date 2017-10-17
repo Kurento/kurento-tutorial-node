@@ -1,6 +1,7 @@
 {
-  "name": "kurento-hello-world",
-  "description": "Kurento Browser JavaScript Tutorial",
+  "name": "kurento-recorder",
+  "version": "6.6.2-dev",
+  "description": "Kurento demo with Recorder",
   "authors": [
     "Kurento <info@kurento.org>"
   ],
@@ -23,6 +24,7 @@
     "bootstrap": "~3.3.0",
     "ekko-lightbox": "~3.3.0",
     "demo-console": "1.5.1",
-    "kurento-utils": "6.6.2"
+    "kurento-client": "master",
+    "kurento-utils": "master"
   }
 }
