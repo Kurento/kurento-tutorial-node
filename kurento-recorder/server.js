@@ -202,7 +202,7 @@ function start(sessionId, ws, sdpOffer, callback) {
               {type: 'WebRtcEndpoint', params: {}}
             ];
 
-            createMediaElements(elements, pipeline, ws, function(error, elements) {
+            createMediaElements(elements, pipeline, function(error, elements) {
 
                 var recorder = elements[0];
                 var webRtc   = elements[1];
@@ -226,7 +226,6 @@ function start(sessionId, ws, sdpOffer, callback) {
                     }
 
                     webRtc.on('OnIceCandidate', function(event) {
-                        console.log('OnIceCandidate called r');
                         var candidate = kurento.getComplexType('IceCandidate')(event.candidate);
                         ws.send(JSON.stringify({
                             id : 'iceCandidate',
@@ -255,10 +254,8 @@ function start(sessionId, ws, sdpOffer, callback) {
                     });
 
                     recorder.record(function(error) {
-                      if (error) return onError(error);
-
-                      console.log("record");
-
+                        if (error) return onError(error);
+                        console.log("record");
                     });
 
                 });
@@ -282,115 +279,78 @@ function play(sessionId, ws, sdpOffer, callback) {
                 return callback(error);
             }
 
-                var options = {uri : argv.file_uri}
-                createMediaElementsWithOption('PlayerEndpoint', options, pipeline, ws, function(error, player) {
+            var options = {uri : argv.file_uri}
+            createMediaElementsWithOption('PlayerEndpoint', options, pipeline, function(error, player) {
+                
+                if (error) return onError(error);
+
+
+                player.on('EndOfStream', function(event){
+                    console.log('END OF STREAM');
+                    pipeline.release();
+                });
+
                     
+                player.play(function(error) {
                     if (error) return onError(error);
+                    console.log("Playing ...");
 
+                    createMediaElements('WebRtcEndpoint', pipeline, function(error, webRtcEndpoint) {
+                        if (error) {
+                            pipeline.release();
+                            return callback(error);
+                        }
 
-                    player.on('EndOfStream', function(event){
-                        console.log('END OF STREAM');
-                      pipeline.release();
-                      // videoPlayer.src = "";
+                        webRtcEndpoint.on('OnIceCandidate', function(event) {
+                            var candidate = kurento.getComplexType('IceCandidate')(event.candidate);
+                            console.log('OnIceCandidate called');
+                            ws.send(JSON.stringify({
+                                id : 'iceCandidate',
+                                candidate : candidate
+                            }));
+                        });
 
-                      // hideSpinner(videoPlayer);
-                    });
+                        if (candidatesQueue[sessionId]) {
+                            console.log('candidatesQueue');
+                            while(candidatesQueue[sessionId].length) {
+                                var candidate = candidatesQueue[sessionId].shift();
+                                webRtcEndpoint.addIceCandidate(candidate);
+                            }
+                        }
 
-                        
-                    player.play(function(error) {
-                        if (error) return onError(error);
-                        console.log("Playing ...");
-
-                        createMediaElements('WebRtcEndpoint', pipeline, ws, function(error, webRtcEndpoint) {
+                        webRtcEndpoint.processOffer(sdpOffer, function(error, sdpAnswer) {
+                            console.log('processOffer');
                             if (error) {
                                 pipeline.release();
                                 return callback(error);
                             }
 
-                            webRtcEndpoint.on('OnIceCandidate', function(event) {
-                                var candidate = kurento.getComplexType('IceCandidate')(event.candidate);
-                                console.log('OnIceCandidate called');
-                                ws.send(JSON.stringify({
-                                    id : 'iceCandidate',
-                                    candidate : candidate
-                                }));
-                            });
-
-
-                            if (candidatesQueue[sessionId]) {
-                                console.log('candidatesQueue');
-                                while(candidatesQueue[sessionId].length) {
-                                    var candidate = candidatesQueue[sessionId].shift();
-                                    webRtcEndpoint.addIceCandidate(candidate);
-                                }
+                            sessions[sessionId] = {
+                                'pipeline' : pipeline,
+                                'webRtcEndpoint' : webRtcEndpoint,
                             }
 
+                            connectMediaElements(player, webRtcEndpoint,function(error) {
+                                if (error) return onError(error);
 
-
-                            webRtcEndpoint.processOffer(sdpOffer, function(error, sdpAnswer) {
-                                console.log('processOffer');
-                                if (error) {
-                                    pipeline.release();
-                                    return callback(error);
-                                }
-
-                                sessions[sessionId] = {
-                                    'pipeline' : pipeline,
-                                    'webRtcEndpoint' : webRtcEndpoint,
-                                }
-
-                                connectMediaElements(player, webRtcEndpoint,function(error) {
-                                    if (error) return onError(error);
-
-                                    console.log('connectMediaElements');
-                                    return callback(null, sdpAnswer);
-                                });      
-
-                                
-                            });
-
-                            webRtcEndpoint.gatherCandidates(function(error) {
-                                if (error) {
-                                    return callback(error);
-                                }
-                            });
-
-
+                                console.log('connectMediaElements');
+                                return callback(null, sdpAnswer);
+                            });                                  
                         });
 
-
+                        webRtcEndpoint.gatherCandidates(function(error) {
+                            if (error) {
+                                return callback(error);
+                            }
+                        });
                     });
-
-
-
-                    // connectMediaElements(player, webRtcEndpoint,function(error) {
-                    //     if (error) return onError(error);
-
-                    //     webRtcEndpoint.on('OnIceCandidate', function(event) {
-                    //         var candidate = kurento.getComplexType('IceCandidate')(event.candidate);
-                    //         ws.send(JSON.stringify({
-                    //             id : 'iceCandidate',
-                    //             candidate : candidate
-                    //         }));
-                    //     });
-
-
-
-                    //     webRtcEndpoint.gatherCandidates(function(error) {
-                    //         if (error) {
-                    //             return callback(error);
-                    //         }
-                    //     });
-
-                    // });
-                
                 });
-
+            });
         });
     });
 }
 
-function createMediaElements(elements, pipeline, ws, callback) {
+function createMediaElements(elements, pipeline, callback) {
     pipeline.create(elements, function(error, elements) {
         if (error) {
             return callback(error);
@@ -400,7 +360,7 @@ function createMediaElements(elements, pipeline, ws, callback) {
     });
 }
 
-function createMediaElementsWithOption(elements, option, pipeline, ws, callback) {
+function createMediaElementsWithOption(elements, option, pipeline, callback) {
     pipeline.create(elements, option,function(error, elements) {
         if (error) {
             return callback(error);
