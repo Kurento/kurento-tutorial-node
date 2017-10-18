@@ -24,6 +24,8 @@ var state = null;
 const I_CAN_START = 0;
 const I_CAN_STOP = 1;
 const I_AM_STARTING = 2;
+const I_AM_PLAYING = 3;
+const I_CAN_STOP_PLAYING = 4;
 
 window.onload = function() {
 	console = new Console();
@@ -118,7 +120,7 @@ function startResponse(message) {
 }
 
 function playResponse(message) {
-	setState(I_CAN_STOP);
+	setState(I_CAN_STOP_PLAYING);
 	console.log('SDP answer received from server. Processing ...');
 	webRtcPeer.processAnswer(message.sdpAnswer);
 }
@@ -190,7 +192,24 @@ function setState(nextState) {
 		$('#stop').attr('disabled', true);
 		$('#stop').removeAttr('onclick');
 		break;
+	case I_AM_PLAYING:
+		$('#start').attr('disabled', true);
+		$('#start').removeAttr('onclick');
+		$('#stop').attr('disabled', true);
+		$('#stop').removeAttr('onclick');
+		$('#play').attr('disabled', true);
+		$('#play').removeAttr('onclick');
 
+		break;
+	case I_CAN_STOP_PLAYING:
+		$('#start').attr('disabled', true);
+		$('#start').removeAttr('onclick');
+		$('#stop').attr('disabled', true);
+		$('#stop').removeAttr('onclick');
+		$('#play').attr('disabled', false);
+		$('#play').attr('onclick', 'startPlaying()');
+
+		break;		
 	default:
 		onError('Unknown state ' + nextState);
 		return;
