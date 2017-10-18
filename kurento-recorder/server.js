@@ -267,8 +267,87 @@ function start(sessionId, ws, sdpOffer, callback) {
 }
 
 function play(sessionId, ws, sdpOffer, callback) {
+    if (!sessionId) {
+        return callback('Cannot use undefined sessionId');
+    }
 
-};
+    getKurentoClient(function(error, kurentoClient) {
+        if (error) {
+            return callback(error);
+        }
+
+        kurentoClient.create('MediaPipeline', function(error, pipeline) {
+            if (error) {
+                return callback(error);
+            }
+
+            createMediaElements('WebRtcEndpoint', pipeline, ws, function(error, webRtcEndpoint) {
+                if (error) {
+                    pipeline.release();
+                    return callback(error);
+                }
+
+                if (candidatesQueue[sessionId]) {
+                    while(candidatesQueue[sessionId].length) {
+                        var candidate = candidatesQueue[sessionId].shift();
+                        webRtcEndpoint.addIceCandidate(candidate);
+                    }
+                }
+
+                var options = {uri : argv.file_uri}
+                createMediaElementsWithOption('PlayerEndpoint', options, pipeline, ws, function(error, player) {
+                    
+                    if (error) return onError(error);
+
+                    player.on('EndOfStream', function(event){
+                      pipeline.release();
+                      // videoPlayer.src = "";
+
+                      // hideSpinner(videoPlayer);
+                    });
+
+                    connectMediaElements(player, webRtcEndpoint,function(error) {
+                        if (error) return onError(error);
+
+                        webRtcEndpoint.on('OnIceCandidate', function(event) {
+                            var candidate = kurento.getComplexType('IceCandidate')(event.candidate);
+                            ws.send(JSON.stringify({
+                                id : 'iceCandidate',
+                                candidate : candidate
+                            }));
+                        });
+
+                        webRtcEndpoint.processOffer(sdpOffer, function(error, sdpAnswer) {
+                            if (error) {
+                                pipeline.release();
+                                return callback(error);
+                            }
+
+                            sessions[sessionId] = {
+                                'pipeline' : pipeline,
+                                'webRtcEndpoint' : webRtcEndpoint
+                            }
+                            return callback(null, sdpAnswer);
+                        });
+
+                        webRtcEndpoint.gatherCandidates(function(error) {
+                            if (error) {
+                                return callback(error);
+                            }
+                        });
+                        
+                        player.play(function(error) {
+                            if (error) return onError(error);
+                            console.log("Playing ...");
+                        });
+                    });
+                
+                });
+
+            });
+        });
+    });
+}
 
 function createMediaElements(elements, pipeline, ws, callback) {
     pipeline.create(elements, function(error, elements) {
@@ -290,8 +369,8 @@ function createMediaElementsWithOption(elements, option, pipeline, ws, callback)
     });
 }
 
-function connectMediaElements(webRtcEndpoint, callback) {
-    webRtcEndpoint.connect(webRtcEndpoint, function(error) {
+function connectMediaElements(target_1, target2, callback) {
+    target_1.connect(target2, function(error) {
         if (error) {
             return callback(error);
         }
