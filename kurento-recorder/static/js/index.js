@@ -45,6 +45,9 @@ ws.onmessage = function(message) {
 	case 'startResponse':
 		startResponse(parsedMessage);
 		break;
+	case 'playResponse':
+		playResponse(parsedMessage);
+		break;		
 	case 'error':
 		if (state == I_AM_STARTING) {
 			setState(I_CAN_START);
@@ -114,6 +117,12 @@ function startResponse(message) {
 	webRtcPeer.processAnswer(message.sdpAnswer);
 }
 
+function playResponse(message) {
+	setState(I_CAN_STOP);
+	console.log('SDP answer received from server. Processing ...');
+	webRtcPeer.processAnswer(message.sdpAnswer);
+}
+
 function stop() {
 	console.log('Stopping video call ...');
 	setState(I_CAN_START);
@@ -133,11 +142,32 @@ function stop() {
   playButton.addEventListener('click', startPlaying);	
 }
 
-function startPlaying()
-{
-  console.log("Start playing");
+function onPlayOffer(error, offerSdp) {
+	if(error) return onError(error);
 
+	console.info('Invoking play offer callback function ' + location.host);
+	var message = {
+		id : 'play',
+		sdpOffer : offerSdp
+	}
+	sendMessage(message);
+}
 
+function startPlaying() {
+	console.log('Playing video call ...')
+
+	// Disable start button
+	setState(I_AM_PLAYING);
+	showSpinner(videoOutput);
+
+  var options = {
+    remoteVideo: videoOutput
+  }
+
+  webRtcPeer = kurentoUtils.WebRtcPeer.WebRtcPeerRecvonly(options, function(error) {
+      if(error) return onError(error);
+      this.generateOffer(onPlayOffer);
+  });
 }
 function setState(nextState) {
 	switch (nextState) {

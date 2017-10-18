@@ -124,6 +124,22 @@ wss.on('connection', function(ws) {
             });
             break;
 
+        case 'play':
+            sessionId = request.session.id;
+            play(sessionId, ws, message.sdpOffer, function(error, sdpAnswer) {
+                if (error) {
+                    return ws.send(JSON.stringify({
+                        id : 'error',
+                        message : error
+                    }));
+                }
+                ws.send(JSON.stringify({
+                    id : 'playResponse',
+                    sdpAnswer : sdpAnswer
+                }));
+            });
+            break;
+
         case 'stop':
             stop(sessionId);
             break;
@@ -203,7 +219,7 @@ function start(sessionId, ws, sdpOffer, callback) {
                     }
                 }
                 
-                connectMediaElements(kurentoClient, webRtc, webRtc, recorder, function(error) {
+                connectMediaElementsWithRecorder(kurentoClient, webRtc, webRtc, recorder, function(error) {
                     if (error) {
                         pipeline.release();
                         return callback(error);
@@ -250,6 +266,10 @@ function start(sessionId, ws, sdpOffer, callback) {
     });
 }
 
+function play(sessionId, ws, sdpOffer, callback) {
+
+};
+
 function createMediaElements(elements, pipeline, ws, callback) {
     pipeline.create(elements, function(error, elements) {
         if (error) {
@@ -260,7 +280,26 @@ function createMediaElements(elements, pipeline, ws, callback) {
     });
 }
 
-function connectMediaElements(client, webRtc1, webRtc2, recorder, callback) {
+function createMediaElementsWithOption(elements, option, pipeline, ws, callback) {
+    pipeline.create(elements, option,function(error, elements) {
+        if (error) {
+            return callback(error);
+        }
+
+        return callback(null, elements);
+    });
+}
+
+function connectMediaElements(webRtcEndpoint, callback) {
+    webRtcEndpoint.connect(webRtcEndpoint, function(error) {
+        if (error) {
+            return callback(error);
+        }
+        return callback(null);
+    });
+}
+
+function connectMediaElementsWithRecorder(client, webRtc1, webRtc2, recorder, callback) {
     client.connect(webRtc1, webRtc2, recorder, function(error) {
         if (error) {
             return callback(error);
@@ -280,20 +319,9 @@ function stop(sessionId) {
         delete sessions[sessionId];
         delete candidatesQueue[sessionId];
 
-      // stopRecordButton.addEventListener("click", function(event){
         recorder.stop();
         pipeline.release();
-        // webRtcPeer.dispose();
-        // videoInput.src = "";
-        // videoOutput.src = "";
 
-        // hideSpinner(videoInput, videoOutput);
-
-        // var playButton = document.getElementById('play');
-        // playButton.addEventListener('click', startPlaying);
-      // })    
-
-          
     }
 }
 
