@@ -276,7 +276,6 @@ function stop(sessionId) {
         var recorder = sessions[sessionId].recorder;
 
         console.info('Releasing pipeline');
-        pipeline.release();
 
         delete sessions[sessionId];
         delete candidatesQueue[sessionId];
