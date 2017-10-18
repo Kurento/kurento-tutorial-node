@@ -187,6 +187,10 @@ function start(sessionId, ws, sdpOffer, callback) {
             ];
 
             createMediaElements(elements, pipeline, ws, function(error, elements) {
+
+                var recorder = elements[0];
+                var webRtc   = elements[1];
+
                 if (error) {
                     pipeline.release();
                     return callback(error);
@@ -195,12 +199,9 @@ function start(sessionId, ws, sdpOffer, callback) {
                 if (candidatesQueue[sessionId]) {
                     while(candidatesQueue[sessionId].length) {
                         var candidate = candidatesQueue[sessionId].shift();
-                        webRtcEndpoint.addIceCandidate(candidate);
+                        webRtc.addIceCandidate(candidate);
                     }
                 }
-
-                var recorder = elements[0];
-                var webRtc   = elements[1];
                 
                 connectMediaElements(kurentoClient, webRtc, webRtc, recorder, function(error) {
                     if (error) {
