@@ -19,6 +19,7 @@ var ws = new WebSocket('wss://' + location.host + '/helloworld');
 var videoInput;
 var videoOutput;
 var webRtcPeer;
+var webRtcPeerPlay;
 var state = null;
 
 const I_CAN_START = 0;
@@ -57,7 +58,11 @@ ws.onmessage = function(message) {
 		onError('Error message from server: ' + parsedMessage.message);
 		break;
 	case 'iceCandidate':
-		webRtcPeer.addIceCandidate(parsedMessage.candidate)
+
+		if(webRtcPeer)
+			webRtcPeer.addIceCandidate(parsedMessage.candidate)
+		else
+			webRtcPeerPlay.addIceCandidate(parsedMessage.candidate)
 		break;
 	default:
 		if (state == I_AM_STARTING) {
@@ -122,7 +127,7 @@ function startResponse(message) {
 function playResponse(message) {
 	setState(I_CAN_STOP_PLAYING);
 	console.log('SDP answer received from server. Processing ...');
-	webRtcPeer.processAnswer(message.sdpAnswer);
+	webRtcPeerPlay.processAnswer(message.sdpAnswer);
 }
 
 function stop() {
@@ -163,10 +168,11 @@ function startPlaying() {
 	showSpinner(videoOutput);
 
   var options = {
-    remoteVideo: videoOutput
+    remoteVideo: videoOutput,
+    onicecandidate : onIceCandidate
   }
 
-  webRtcPeer = kurentoUtils.WebRtcPeer.WebRtcPeerRecvonly(options, function(error) {
+  webRtcPeerPlay = kurentoUtils.WebRtcPeer.WebRtcPeerRecvonly(options, function(error) {
       if(error) return onError(error);
       this.generateOffer(onPlayOffer);
   });
@@ -202,8 +208,8 @@ function setState(nextState) {
 
 		break;
 	case I_CAN_STOP_PLAYING:
-		$('#start').attr('disabled', true);
-		$('#start').removeAttr('onclick');
+		$('#start').attr('disabled', false);
+		$('#start').attr('onclick', 'start()');
 		$('#stop').attr('disabled', true);
 		$('#stop').removeAttr('onclick');
 		$('#play').attr('disabled', false);
@@ -219,7 +225,7 @@ function setState(nextState) {
 
 function sendMessage(message) {
 	var jsonMessage = JSON.stringify(message);
-	console.log('Senging message: ' + jsonMessage);
+	console.log('Sending message: ' + jsonMessage);
 	ws.send(jsonMessage);
 }
 

@@ -226,6 +226,7 @@ function start(sessionId, ws, sdpOffer, callback) {
                     }
 
                     webRtc.on('OnIceCandidate', function(event) {
+                        console.log('OnIceCandidate called r');
                         var candidate = kurento.getComplexType('IceCandidate')(event.candidate);
                         ws.send(JSON.stringify({
                             id : 'iceCandidate',
@@ -281,70 +282,110 @@ function play(sessionId, ws, sdpOffer, callback) {
                 return callback(error);
             }
 
-            createMediaElements('WebRtcEndpoint', pipeline, ws, function(error, webRtcEndpoint) {
-                if (error) {
-                    pipeline.release();
-                    return callback(error);
-                }
-
-                if (candidatesQueue[sessionId]) {
-                    while(candidatesQueue[sessionId].length) {
-                        var candidate = candidatesQueue[sessionId].shift();
-                        webRtcEndpoint.addIceCandidate(candidate);
-                    }
-                }
-
                 var options = {uri : argv.file_uri}
                 createMediaElementsWithOption('PlayerEndpoint', options, pipeline, ws, function(error, player) {
                     
                     if (error) return onError(error);
 
+
                     player.on('EndOfStream', function(event){
+                        console.log('END OF STREAM');
                       pipeline.release();
                       // videoPlayer.src = "";
 
                       // hideSpinner(videoPlayer);
                     });
 
-                    connectMediaElements(player, webRtcEndpoint,function(error) {
+                        
+                    player.play(function(error) {
                         if (error) return onError(error);
+                        console.log("Playing ...");
 
-                        webRtcEndpoint.on('OnIceCandidate', function(event) {
-                            var candidate = kurento.getComplexType('IceCandidate')(event.candidate);
-                            ws.send(JSON.stringify({
-                                id : 'iceCandidate',
-                                candidate : candidate
-                            }));
-                        });
-
-                        webRtcEndpoint.processOffer(sdpOffer, function(error, sdpAnswer) {
+                        createMediaElements('WebRtcEndpoint', pipeline, ws, function(error, webRtcEndpoint) {
                             if (error) {
                                 pipeline.release();
                                 return callback(error);
                             }
 
-                            sessions[sessionId] = {
-                                'pipeline' : pipeline,
-                                'webRtcEndpoint' : webRtcEndpoint
+                            webRtcEndpoint.on('OnIceCandidate', function(event) {
+                                var candidate = kurento.getComplexType('IceCandidate')(event.candidate);
+                                console.log('OnIceCandidate called');
+                                ws.send(JSON.stringify({
+                                    id : 'iceCandidate',
+                                    candidate : candidate
+                                }));
+                            });
+
+
+                            if (candidatesQueue[sessionId]) {
+                                console.log('candidatesQueue');
+                                while(candidatesQueue[sessionId].length) {
+                                    var candidate = candidatesQueue[sessionId].shift();
+                                    webRtcEndpoint.addIceCandidate(candidate);
+                                }
                             }
-                            return callback(null, sdpAnswer);
+
+
+
+                            webRtcEndpoint.processOffer(sdpOffer, function(error, sdpAnswer) {
+                                console.log('processOffer');
+                                if (error) {
+                                    pipeline.release();
+                                    return callback(error);
+                                }
+
+                                sessions[sessionId] = {
+                                    'pipeline' : pipeline,
+                                    'webRtcEndpoint' : webRtcEndpoint,
+                                }
+
+                                connectMediaElements(player, webRtcEndpoint,function(error) {
+                                    if (error) return onError(error);
+
+                                    console.log('connectMediaElements');
+                                    return callback(null, sdpAnswer);
+                                });      
+
+                                
+                            });
+
+                            webRtcEndpoint.gatherCandidates(function(error) {
+                                if (error) {
+                                    return callback(error);
+                                }
+                            });
+
+
                         });
 
-                        webRtcEndpoint.gatherCandidates(function(error) {
-                            if (error) {
-                                return callback(error);
-                            }
-                        });
-                        
-                        player.play(function(error) {
-                            if (error) return onError(error);
-                            console.log("Playing ...");
-                        });
+
                     });
+
+
+
+                    // connectMediaElements(player, webRtcEndpoint,function(error) {
+                    //     if (error) return onError(error);
+
+                    //     webRtcEndpoint.on('OnIceCandidate', function(event) {
+                    //         var candidate = kurento.getComplexType('IceCandidate')(event.candidate);
+                    //         ws.send(JSON.stringify({
+                    //             id : 'iceCandidate',
+                    //             candidate : candidate
+                    //         }));
+                    //     });
+
+
+
+                    //     webRtcEndpoint.gatherCandidates(function(error) {
+                    //         if (error) {
+                    //             return callback(error);
+                    //         }
+                    //     });
+
+                    // });
                 
                 });
 
-            });
         });
     });
 }
@@ -398,7 +439,8 @@ function stop(sessionId) {
         delete sessions[sessionId];
         delete candidatesQueue[sessionId];
 
-        recorder.stop();
+        if(recorder)
+            recorder.stop();
         pipeline.release();
 
     }
