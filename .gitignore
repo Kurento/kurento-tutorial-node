@@ -1,6 +1,7 @@
 .classpath
 .project
 .settings/
+.idea/
 .jshintrc
 node_modules/
 bower_components/
