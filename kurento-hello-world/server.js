@@ -17,7 +17,6 @@
 
 var path = require('path');
 var url = require('url');
-var cookieParser = require('cookie-parser')
 var express = require('express');
 var session = require('express-session')
 var minimist = require('minimist');
@@ -44,8 +43,6 @@ var app = express();
 /*
  * Management of sessions
  */
-app.use(cookieParser());
-
 var sessionHandler = session({
     secret : 'none',
     rolling : true,
@@ -80,14 +77,16 @@ var wss = new ws.Server({
 /*
  * Management of WebSocket messages
  */
-wss.on('connection', function(ws) {
+wss.on('connection', function (ws, request) {
     var sessionId = null;
-    var request = ws.upgradeReq;
     var response = {
         writeHead : {}
     };
 
-    sessionHandler(request, response, function(err) {
+    sessionHandler(request, response, function (err) {
+        if (err) {
+            console.error(err);
+        }
         sessionId = request.session.id;
         console.log('Connection received with sessionId ' + sessionId);
     });
