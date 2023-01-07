@@ -74,6 +74,13 @@ function nextUniqueId() {
  */
 wss.on('connection', function(ws) {
 
+   // prevent 1006 close on client 
+   var heartbeat = setInterval(function(){
+     // https://github.com/websockets/ws/blob/master/doc/ws.md#websocketpingdata-mask-callback
+     ws.ping();
+   }, 3000);
+
+	
 	var sessionId = nextUniqueId();
 	console.log('Connection received with sessionId ' + sessionId);
 
@@ -85,6 +92,7 @@ wss.on('connection', function(ws) {
     ws.on('close', function() {
         console.log('Connection ' + sessionId + ' closed');
         stop(sessionId);
+	clearInterval(heartbeat);
     });
 
     ws.on('message', function(_message) {
